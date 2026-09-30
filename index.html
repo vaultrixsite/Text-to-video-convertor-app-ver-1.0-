@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Context Text-to-Video Studio</title>
+    <title>Smart Context Video Studio</title>
     <style>
         :root {
             --primary: #6366f1;
@@ -12,7 +12,6 @@
             --card-bg: #1e293b;
             --text: #f8fafc;
             --text-muted: #94a3b8;
-            --accent: #22c55e;
         }
 
         * {
@@ -61,7 +60,7 @@
 
         textarea {
             width: 100%;
-            height: 90px;
+            height: 110px;
             background: #0f172a;
             border: 1px solid #334155;
             border-radius: 8px;
@@ -92,19 +91,14 @@
             font-size: 0.9rem;
         }
 
-        .btn-group {
-            display: flex;
-            gap: 8px;
-        }
-
         .btn {
-            flex: 1;
+            width: 100%;
             background: var(--primary);
             color: white;
             border: none;
-            padding: 10px;
+            padding: 12px;
             border-radius: 8px;
-            font-size: 0.95rem;
+            font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
             transition: background 0.2s;
@@ -114,20 +108,6 @@
             background: var(--primary-hover);
         }
 
-        .btn-download {
-            background: var(--accent);
-        }
-        .btn-download:hover {
-            background: #16a34a;
-        }
-
-        .btn:disabled {
-            background: #475569;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-
-        /* Video Simulation Viewport */
         .video-viewport {
             width: 100%;
             aspect-ratio: 16/9;
@@ -147,8 +127,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            opacity: 0.65;
-            transition: opacity 0.4s ease;
+            opacity: 0.7;
         }
 
         .video-text-overlay {
@@ -160,7 +139,6 @@
             font-weight: bold;
             color: #ffffff;
             text-shadow: 0 2px 6px rgba(0,0,0,0.9);
-            animation: fadeInOut 0.4s ease;
         }
 
         .watermark {
@@ -190,11 +168,6 @@
             background: var(--primary);
             transition: width 0.1s linear;
         }
-
-        @keyframes fadeInOut {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
     </style>
 </head>
 <body>
@@ -204,7 +177,7 @@
         
         <div class="input-group">
             <label for="storyText">Apna Text/Script Yahan Daalein:</label>
-            <textarea id="storyText" placeholder="Example: I love traveling to mountains. Technology and coding are my passion. Eating delicious food makes me happy. Space science is amazing."></textarea>
+            <textarea id="storyText">Once upon a time, a big elephant lived in a dense, green jungle. Every morning, he used to go near the cold water river to drink water and enjoy himself. Along with him, a cute baby elephant also used to play with its beautiful trunk. The other animals of the jungle also became his good friends, and everyone lived together happily.</textarea>
         </div>
 
         <div class="controls-row">
@@ -218,15 +191,10 @@
             </div>
         </div>
 
-        <div class="btn-group">
-            <button id="generateBtn" class="btn" onclick="startVideoGeneration()">Play Video</button>
-            <button id="downloadBtn" class="btn btn-download" onclick="downloadVideoRecording()" disabled>Save Video</button>
-        </div>
+        <button id="generateBtn" class="btn" onclick="startVideoGeneration()">Play Video & Audio</button>
 
-        <!-- Video Simulation Screen -->
-        <div class="video-viewport" id="videoViewport">
-            <canvas id="renderCanvas" style="display:none;"></canvas>
-            <img id="sceneImage" class="video-bg" src="https://picsum.photos/seed/start/800/450" alt="Scene Visual">
+        <div class="video-viewport">
+            <img id="sceneImage" class="video-bg" src="https://picsum.photos/seed/elephant/800/450" alt="Visual">
             <div id="sceneText" class="video-text-overlay">Press Play Video to Start</div>
             <div class="watermark">Studio App</div>
         </div>
@@ -240,28 +208,14 @@
         let synth = window.speechSynthesis;
         let isPlaying = false;
         let currentTimeout = null;
-        let mediaRecorder;
-        let recordedChunks = [];
 
-        // Smart Dictionary to map common text keywords to exact image topics
         function extractKeyword(sentence) {
             const text = sentence.toLowerCase();
-            
-            // Common keywords mapping
-            if (text.includes('mountain') || text.includes('hills') || text.includes('trek')) return 'mountains';
-            if (text.includes('beach') || text.includes('sea') || text.includes('ocean') || text.includes('water')) return 'beach,sunset';
-            if (text.includes('code') || text.includes('coding') || text.includes('programming') || text.includes('technology') || text.includes('tech')) return 'technology,coding';
-            if (text.includes('food') || text.includes('eating') || text.includes('hungry') || text.includes('delicious')) return 'food,restaurant';
-            if (text.includes('space') || text.includes('planet') || text.includes('galaxy') || text.includes('stars')) return 'space,galaxy';
-            if (text.includes('car') || text.includes('drive') || text.includes('vehicle') || text.includes('road')) return 'cars,highway';
-            if (text.includes('city') || text.includes('building') || text.includes('urban') || text.includes('street')) return 'city,architecture';
-            if (text.includes('animal') || text.includes('dog') || text.includes('cat') || text.includes('pet')) return 'animals,wildlife';
-            if (text.includes('money') || text.includes('business') || text.includes('rich') || text.includes('wealth')) return 'business,finance';
-            if (text.includes('music') || text.includes('song') || text.includes('guitar') || text.includes('audio')) return 'music,guitar';
-
-            // Fallback: Agar koi specific keyword na mile toh sentence ke pehle 2-3 unique words ko keyword bana lo
-            let words = text.replace(/[^a-zA-Z ]/g, "").split(" ").filter(w => w.length > 3);
-            return words.length > 0 ? words[0] : 'abstract';
+            if (text.includes('elephant')) return 'elephant';
+            if (text.includes('jungle') || text.includes('forest') || text.includes('green')) return 'jungle';
+            if (text.includes('river') || text.includes('water') || text.includes('drink')) return 'river';
+            if (text.includes('lion') || text.includes('animal') || text.includes('friends')) return 'animals';
+            return 'nature';
         }
 
         function startVideoGeneration() {
@@ -276,46 +230,15 @@
                 return;
             }
 
-            // Text ko sentences mein divide karna
-            let sentences = rawText.match(/[^.!?]+[.!?]*/g) || [rawText];
-            sentences = sentences.map(s => s.trim());
+            // Safe text splitting using period (.) instead of complex regex to prevent freezing
+            let sentences = rawText.split('.').map(s => s.trim()).filter(s => s.length > 0);
 
-            const sceneDuration = parseInt(getElementByIdVal('speedSelect'));
+            const sceneDuration = parseInt(document.getElementById('speedSelect').value);
             const btn = document.getElementById('generateBtn');
-            const downloadBtn = document.getElementById('downloadBtn');
             
             btn.innerText = "Stop / Reset";
             btn.style.background = "#ef4444";
-            downloadBtn.disabled = true;
             isPlaying = true;
-
-            const canvas = document.getElementById('renderCanvas');
-            canvas.width = 800;
-            canvas.height = 450;
-            const ctx = canvas.getContext('2d');
-            
-            let stream = canvas.captureStream(30);
-            try {
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-                recordedChunks = [];
-                mediaRecorder.ondataavailable = function(e) {
-                    if (e.data.size > 0) recordedChunks.push(e.data);
-                };
-                mediaRecorder.onstop = function() {
-                    let blob = new Blob(recordedChunks, { type: 'video/webm' });
-                    let url = URL.createObjectURL(blob);
-                    downloadBtn.onclick = function() {
-                        let a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'smart-video.webm';
-                        a.click();
-                    };
-                    downloadBtn.disabled = false;
-                };
-                mediaRecorder.start();
-            } catch (err) {
-                console.log("Recording stream mode not supported.");
-            }
 
             let currentIndex = 0;
             const totalSteps = sentences.length;
@@ -324,44 +247,21 @@
             function playScene() {
                 if (!isPlaying || currentIndex >= sentences.length) {
                     stopVideo();
-                    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                        mediaRecorder.stop();
-                    }
                     return;
                 }
 
-                let currentSentence = sentences[currentIndex];
-                
-                // Update Text Overlay
+                let currentSentence = sentences[currentIndex] + ".";
                 document.getElementById('sceneText').innerText = currentSentence;
                 
-                // Get EXACT context keyword from sentence for precise picture matching
                 let exactKeyword = extractKeyword(currentSentence);
-                
-                // Use Source.unsplash or Picsum keyword search for context matching
-                const imgElement = document.getElementById('sceneImage');
-                imgElement.src = `https://picsum.photos/seed/${exactKeyword}/800/450`;
+                document.getElementById('sceneImage').src = `https://picsum.photos/seed/${exactKeyword}/800/450?t=` + new Date().getTime();
 
-                // Draw frame to hidden canvas
-                imgElement.onload = function() {
-                    ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "bold 26px sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.fillText(currentSentence, canvas.width / 2, canvas.height - 60);
-                };
-
-                // Speech Synthesis (Text Readout)
                 if (synth) {
                     synth.cancel();
                     let utterance = new SpeechSynthesisUtterance(currentSentence);
-                    utterance.rate = 1.0;
                     synth.speak(utterance);
                 }
 
-                // Update Progress Bar
                 let progressPercent = ((currentIndex + 1) / totalSteps) * 100;
                 progressBar.style.width = `${progressPercent}%`;
 
@@ -372,23 +272,16 @@
             playScene();
         }
 
-        function getElementIdVal(id) {
-            return document.getElementById(id).value;
-        }
-
         function stopVideo() {
             isPlaying = false;
             if (synth) synth.cancel();
             if (currentTimeout) clearTimeout(currentTimeout);
-            if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                mediaRecorder.stop();
-            }
 
             const btn = document.getElementById('generateBtn');
-            btn.innerText = "Play Video";
+            btn.innerText = "Play Video & Audio";
             btn.style.background = "var(--primary)";
             
-            document.getElementById('sceneText').innerText = "Video Stopped / Finished";
+            document.getElementById('sceneText').innerText = "Video Stopped";
             document.getElementById('progressBar').style.width = "0%";
         }
     </script>
