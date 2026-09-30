@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Context Video Studio</title>
+    <title>AI Video Studio with Download</title>
     <style>
         :root {
             --primary: #6366f1;
             --primary-hover: #4f46e5;
+            --accent: #22c55e;
+            --accent-hover: #16a34a;
             --bg: #0f172a;
             --card-bg: #1e293b;
             --text: #f8fafc;
@@ -60,7 +62,7 @@
 
         textarea {
             width: 100%;
-            height: 110px;
+            height: 100px;
             background: #0f172a;
             border: 1px solid #334155;
             border-radius: 8px;
@@ -91,14 +93,19 @@
             font-size: 0.9rem;
         }
 
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
         .btn {
-            width: 100%;
+            flex: 1;
             background: var(--primary);
             color: white;
             border: none;
-            padding: 12px;
+            padding: 11px;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: bold;
             cursor: pointer;
             transition: background 0.2s;
@@ -106,6 +113,19 @@
 
         .btn:hover {
             background: var(--primary-hover);
+        }
+
+        .btn-download {
+            background: var(--accent);
+        }
+        .btn-download:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            opacity: 0.6;
         }
 
         .video-viewport {
@@ -127,7 +147,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            opacity: 0.7;
+            opacity: 0.75;
         }
 
         .video-text-overlay {
@@ -173,30 +193,34 @@
 <body>
 
     <div class="container">
-        <h2>🎬 Smart Context Video Studio</h2>
+        <h2>🎬 AI Video Studio + Download</h2>
         
         <div class="input-group">
             <label for="storyText">Apna Text/Script Yahan Daalein:</label>
-            <textarea id="storyText">Once upon a time, a big elephant lived in a dense, green jungle. Every morning, he used to go near the cold water river to drink water and enjoy himself. Along with him, a cute baby elephant also used to play with its beautiful trunk. The other animals of the jungle also became his good friends, and everyone lived together happily.</textarea>
+            <textarea id="storyText">A big elephant lived in a dense green jungle. Every morning, he went near the cold river water. A cute baby elephant played with its trunk happily.</textarea>
         </div>
 
         <div class="controls-row">
             <div>
                 <label for="speedSelect">Scene Speed:</label>
                 <select id="speedSelect">
-                    <option value="3000">3 Seconds</option>
-                    <option value="4000" selected>4 Seconds</option>
-                    <option value="5000">5 Seconds</option>
+                    <option value="4000">4 Seconds</option>
+                    <option value="5000" selected>5 Seconds</option>
+                    <option value="6000">6 Seconds</option>
                 </select>
             </div>
         </div>
 
-        <button id="generateBtn" class="btn" onclick="startVideoGeneration()">Play Video & Audio</button>
+        <div class="btn-group">
+            <button id="generateBtn" class="btn" onclick="startVideoGeneration()">Play Video</button>
+            <button id="downloadBtn" class="btn btn-download" disabled>Save Video</button>
+        </div>
 
         <div class="video-viewport">
-            <img id="sceneImage" class="video-bg" src="https://picsum.photos/seed/elephant/800/450" alt="Visual">
+            <canvas id="renderCanvas" style="display:none;"></canvas>
+            <img id="sceneImage" class="video-bg" src="" alt="AI Visual">
             <div id="sceneText" class="video-text-overlay">Press Play Video to Start</div>
-            <div class="watermark">Studio App</div>
+            <div class="watermark">AI Studio</div>
         </div>
 
         <div class="progress-bar-container">
@@ -208,15 +232,8 @@
         let synth = window.speechSynthesis;
         let isPlaying = false;
         let currentTimeout = null;
-
-        function extractKeyword(sentence) {
-            const text = sentence.toLowerCase();
-            if (text.includes('elephant')) return 'elephant';
-            if (text.includes('jungle') || text.includes('forest') || text.includes('green')) return 'jungle';
-            if (text.includes('river') || text.includes('water') || text.includes('drink')) return 'river';
-            if (text.includes('lion') || text.includes('animal') || text.includes('friends')) return 'animals';
-            return 'nature';
-        }
+        let mediaRecorder;
+        let recordedChunks = [];
 
         function startVideoGeneration() {
             if (isPlaying) {
@@ -230,15 +247,51 @@
                 return;
             }
 
-            // Safe text splitting using period (.) instead of complex regex to prevent freezing
             let sentences = rawText.split('.').map(s => s.trim()).filter(s => s.length > 0);
-
             const sceneDuration = parseInt(document.getElementById('speedSelect').value);
+            
             const btn = document.getElementById('generateBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
             
             btn.innerText = "Stop / Reset";
             btn.style.background = "#ef4444";
+            downloadBtn.disabled = true;
             isPlaying = true;
+
+            // Setup Canvas for Recording
+            const canvas = document.getElementById('renderCanvas');
+            canvas.width = 800;
+            canvas.height = 450;
+            const ctx = canvas.getContext('2d');
+
+            let stream = canvas.captureStream(30); // 30 FPS stream
+            try {
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                recordedChunks = [];
+                
+                mediaRecorder.ondataavailable = function(e) {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+                
+                mediaRecorder.onstop = function() {
+                    let blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    let url = URL.createObjectURL(blob);
+                    
+                    downloadBtn.disabled = false;
+                    downloadBtn.onclick = function() {
+                        let a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'ai-story-video.webm';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    };
+                };
+                
+                mediaRecorder.start();
+            } catch (err) {
+                console.log("MediaRecorder error: ", err);
+            }
 
             let currentIndex = 0;
             const totalSteps = sentences.length;
@@ -253,8 +306,26 @@
                 let currentSentence = sentences[currentIndex] + ".";
                 document.getElementById('sceneText').innerText = currentSentence;
                 
-                let exactKeyword = extractKeyword(currentSentence);
-                document.getElementById('sceneImage').src = `https://picsum.photos/seed/${exactKeyword}/800/450?t=` + new Date().getTime();
+                let encodedPrompt = encodeURIComponent(currentSentence);
+                let imgUrl = `https://pollinations.ai/p/${encodedPrompt}?width=800&height=450&nologo=true`;
+                
+                const imgElement = document.getElementById('sceneImage');
+                imgElement.src = imgUrl;
+
+                // Draw frame to canvas for recording
+                imgElement.onload = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+                    
+                    // Dark gradient overlay for text readability on video
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "bold 24px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText(currentSentence, canvas.width / 2, canvas.height - 50);
+                };
 
                 if (synth) {
                     synth.cancel();
@@ -276,12 +347,16 @@
             isPlaying = false;
             if (synth) synth.cancel();
             if (currentTimeout) clearTimeout(currentTimeout);
+            
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
 
             const btn = document.getElementById('generateBtn');
-            btn.innerText = "Play Video & Audio";
+            btn.innerText = "Play Video";
             btn.style.background = "var(--primary)";
             
-            document.getElementById('sceneText').innerText = "Video Stopped";
+            document.getElementById('sceneText').innerText = "Video Finished / Stopped. Click Save Video to Download.";
             document.getElementById('progressBar').style.width = "0%";
         }
     </script>
