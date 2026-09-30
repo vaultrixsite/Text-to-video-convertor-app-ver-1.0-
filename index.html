@@ -1,266 +1,218 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Video Studio Pro + Download</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Video Studio Pro + Download</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+body {
+font-family: 'Inter', sans-serif;
+background-color: #0f172a;
+color: #f8fafc;
+}
+</style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-3 sm:p-6">
-
-    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
-        <h2 class="text-xl font-bold text-center mb-4 text-indigo-400 flex items-center justify-center gap-2">
-            <span>🎬</span> AI Video Studio Pro
-        </h2>
-        
-        <div class="mb-4">
-            <label for="storyText" class="block text-xs font-semibold text-slate-400 mb-1">Apna Text/Script Yahan Daalein:</label>
-            <textarea id="storyText" class="w-full h-28 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 resize-none">A big elephant lived in a dense green jungle. Every morning, he went near the cold river water. A cute baby elephant played with its trunk happily.</textarea>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 mb-4">
-            <div>
-                <label for="speedSelect" class="block text-xs font-semibold text-slate-400 mb-1">Scene Speed:</label>
-                <select id="speedSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 p-2.5 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
-                    <option value="4000">4 Seconds</option>
-                    <option value="5000" selected>5 Seconds</option>
-                    <option value="6000">6 Seconds</option>
-                </select>
-            </div>
-            <div class="flex items-end">
-                <div class="w-full text-right text-xs text-slate-400 pb-2">Status: <span id="statusText" class="text-indigo-400 font-medium">Ready</span></div>
-            </div>
-        </div>
-
-        <div class="flex gap-2 mb-4">
-            <button id="generateBtn" onclick="startVideoGeneration()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm">
-                Play Video
-            </button>
-            <button id="downloadBtn" disabled class="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:cursor-not-allowed">
-                Save Video (.webm)
-            </button>
-        </div>
-
-        <div class="w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-inner flex items-center justify-center">
-            <canvas id="renderCanvas" class="hidden"></canvas>
-            <img id="sceneImage" crossorigin="anonymous" class="absolute inset-0 w-full h-full object-cover opacity-80" src="https://images.unsplash.com/photo-1534567153574-2b12153a87f0?w=800&auto=format&fit=crop&q=60" alt="AI Visual" onerror="this.src='https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=60'">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none"></div>
-            <div id="sceneText" class="absolute inset-x-3 bottom-4 z-10 text-center font-bold text-white text-sm sm:text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                Press Play Video to Start
-            </div>
-            <div class="absolute top-2 right-2 z-20 bg-black/60 text-[10px] text-slate-300 px-2 py-0.5 rounded backdrop-blur-sm">
-                AI Studio Pro
-            </div>
-        </div>
-
-        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-4 overflow-hidden">
-            <div id="progressBar" class="bg-indigo-500 h-full w-0 transition-all duration-100"></div>
-        </div>
-    </div>
-
-    <script>
-        let synth = window.speechSynthesis;
-        let isPlaying = false;
-        let currentTimeout = null;
-        let mediaRecorder;
-        let recordedChunks = [];
-
-        function startVideoGeneration() {
-            if (isPlaying) {
-                stopVideo();
-                return;
-            }
-
-            const rawText = document.getElementById('storyText').value.trim();
-            if (!rawText) {
-                alert("Kripya kuch script text enter karein!");
-                return;
-            }
-
-            let sentences = rawText.split('.').map(s => s.trim()).filter(s => s.length > 0);
-            if (sentences.length === 0) {
-                alert("Kripya valid sentences enter karein!");
-                return;
-            }
-
-            const sceneDuration = parseInt(document.getElementById('speedSelect').value);
-            const btn = document.getElementById('generateBtn');
-            const downloadBtn = document.getElementById('downloadBtn');
-            const statusText = document.getElementById('statusText');
-            
-            btn.innerText = "Stop / Reset";
-            btn.className = "flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm";
-            downloadBtn.disabled = true;
-            isPlaying = true;
-            statusText.innerText = "Recording...";
-
-            // Initialize canvas stream recording
-            const canvas = document.getElementById('renderCanvas');
-            canvas.width = 800;
-            canvas.height = 450;
-            const ctx = canvas.getContext('2d');
-
-            let stream;
-            try {
-                stream = canvas.captureStream(30);
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-                recordedChunks = [];
-                
-                mediaRecorder.ondataavailable = function(e) {
-                    if (e.data && e.data.size > 0) {
-                        recordedChunks.push(e.data);
-                    }
-                };
-                
-                mediaRecorder.onstop = function() {
-                    try {
-                        let blob = new Blob(recordedChunks, { type: 'video/webm' });
-                        let url = URL.createObjectURL(blob);
-                        
-                        downloadBtn.disabled = false;
-                        downloadBtn.className = "flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer";
-                        downloadBtn.onclick = function() {
-                            let a = document.createElement('a');
-                            a.href = url;
-                            a.download = 'ai-story-video.webm';
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                        };
-                    } catch(err) {
-                        console.log("Blob error:", err);
-                    }
-                };
-                
-                mediaRecorder.start();
-            } catch (err) {
-                console.log("MediaRecorder init error:", err);
-            }
-
-            let currentIndex = 0;
-            const totalSteps = sentences.length;
-            const progressBar = document.getElementById('progressBar');
-
-            function renderFrameAndProceed(imgElement, currentSentence) {
-                if (!isPlaying) return;
-
-                // Safely draw to canvas
-                try {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
-                    
-                    // Dark overlay gradient
-                    let gradient = ctx.createLinearGradient(0, 250, 0, 450);
-                    gradient.addColorStop(0, 'rgba(0,0,0,0)');
-                    gradient.addColorStop(1, 'rgba(0,0,0,0.85)');
-                    ctx.fillStyle = gradient;
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    // Draw subtitle text
-                    ctx.fillStyle = "#ffffff";
-                    ctx.font = "bold 22px Inter, sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "bottom";
-                    ctx.fillText(currentSentence, canvas.width / 2, canvas.height - 30);
-                } catch(e) {
-                    console.log("Canvas draw error:", e);
-                }
-            }
-
-            function playScene() {
-                if (!isPlaying || currentIndex >= sentences.length) {
-                    stopVideo();
-                    return;
-                }
-
-                let currentSentence = sentences[currentIndex] + ".";
-                document.getElementById('sceneText').innerText = currentSentence;
-                statusText.innerText = `Scene ${currentIndex + 1}/${totalSteps}`;
-                
-                // Construct robust AI image URL with fallback seed
-                let encodedPrompt = encodeURIComponent(currentSentence);
-                let imgUrl = `https://pollinations.ai/p/${encodedPrompt}?width=800&height=450&nologo=true&seed=${currentIndex * 15}`;
-                
-                const imgElement = document.getElementById('sceneImage');
-                
-                // Handle image loading safely with fallback timer
-                let imageLoaded = false;
-                
-                imgElement.onload = function() {
-                    if (!imageLoaded) {
-                        imageLoaded = true;
-                        renderFrameAndProceed(imgElement, currentSentence);
-                    }
-                };
-                
-                imgElement.onerror = function() {
-                    if (!imageLoaded) {
-                        imageLoaded = true;
-                        // Fallback image if pollinations fails
-                        imgElement.src = "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=60";
-                        renderFrameAndProceed(imgElement, currentSentence);
-                    }
-                };
-
-                imgElement.src = imgUrl;
-
-                // Fallback timeout in case image takes too long to load
-                setTimeout(() => {
-                    if (!imageLoaded && isPlaying) {
-                        imageLoaded = true;
-                        renderFrameAndProceed(imgElement, currentSentence);
-                    }
-                }, 1500);
-
-                // Speech synthesis narration
-                if (synth) {
-                    synth.cancel();
-                    let utterance = new SpeechSynthesisUtterance(currentSentence);
-                    utterance.rate = 0.95;
-                    synth.speak(utterance);
-                }
-
-                let progressPercent = ((currentIndex + 1) / totalSteps) * 100;
-                progressBar.style.width = `${progressPercent}%`;
-
-                currentIndex++;
-                currentTimeout = setTimeout(playScene, sceneDuration);
-            }
-
-            playScene();
-        }
-
-        function stopVideo() {
-            isPlaying = false;
-            if (synth) synth.cancel();
-            if (currentTimeout) clearTimeout(currentTimeout);
-            
-            try {
-                if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                    mediaRecorder.stop();
-                }
-            } catch(e) {
-                console.log("Recorder stop error:", e);
-            }
-
-            const btn = document.getElementById('generateBtn');
-            btn.innerText = "Play Video";
-            btn.className = "flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm";
-            
-            document.getElementById('sceneText').innerText = "Video Finished! Click 'Save Video' to Download.";
-            document.getElementById('statusText').innerText = "Finished";
-            document.getElementById('progressBar').style.width = "100%";
-        }
-    </script>
+​<div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl">
+<h2 class="text-xl font-bold text-center mb-4 text-indigo-400 flex items-center justify-center gap-2">
+<span>🎬</span> AI Video Studio Pro
+</h2>
+​<div class="mb-4">
+<label for="storyText" class="block text-xs font-semibold text-slate-400 mb-1">Apna Text/Script Yahan Daalein:</label>
+<textarea id="storyText" class="w-full h-28 bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 resize-none">A big elephant lived in a dense green jungle. Every morning, he went near the cold river water. A cute baby elephant played with its trunk happily.</textarea>
+</div>
+​<div class="grid grid-cols-2 gap-3 mb-4">
+<div>
+<label for="speedSelect" class="block text-xs font-semibold text-slate-400 mb-1">Scene Speed:</label>
+<select id="speedSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 p-2.5 rounded-xl text-sm focus:outline-none focus:border-indigo-500">
+<option value="4000">4 Seconds</option>
+<option value="5000" selected>5 Seconds</option>
+<option value="6000">6 Seconds</option>
+</select>
+</div>
+<div class="flex items-end">
+<div class="w-full text-right text-xs text-slate-400 pb-2">Status: <span id="statusText" class="text-indigo-400 font-medium">Ready (AI Active)</span></div>
+</div>
+</div>
+​<div class="flex gap-2 mb-4">
+<button id="generateBtn" onclick="startVideoGeneration()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm">
+Play Video
+</button>
+<button id="downloadBtn" disabled class="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:cursor-not-allowed">
+Save Video (.webm)
+</button>
+</div>
+​<div class="w-full aspect-video bg-black rounded-xl relative overflow-hidden border border-slate-700 shadow-inner flex items-center justify-center">
+<canvas id="renderCanvas" class="hidden"></canvas>
+<img id="sceneImage" crossorigin="anonymous" class="absolute inset-0 w-full h-full object-cover opacity-80" src="https://pollinations.ai/p/A%20big%20elephant%20in%20a%20dense%20green%20jungle?width=800&height=450&nologo=true" alt="AI Visual">
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none"></div>
+<div id="sceneText" class="absolute inset-x-3 bottom-4 z-10 text-center font-bold text-white text-sm sm:text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+Press Play Video to Start
+</div>
+<div class="absolute top-2 right-2 z-20 bg-black/60 text-[10px] text-emerald-400 font-semibold px-2 py-0.5 rounded backdrop-blur-sm flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> AI Engine Active
+</div>
+</div>
+​<div class="w-full bg-slate-800 h-1.5 rounded-full mt-4 overflow-hidden">
+<div id="progressBar" class="bg-indigo-500 h-full w-0 transition-all duration-100"></div>
+</div>
+</div>
+​<script>
+let synth = window.speechSynthesis;
+let isPlaying = false;
+let currentTimeout = null;
+let mediaRecorder;
+let recordedChunks = [];
+​function startVideoGeneration() {
+if (isPlaying) {
+stopVideo();
+return;
+}
+​const rawText = document.getElementById('storyText').value.trim();
+if (!rawText) {
+alert("Kripya kuch script text enter karein!");
+return;
+}
+​let sentences = rawText.split('.').map(s => s.trim()).filter(s => s.length > 0);
+if (sentences.length === 0) {
+alert("Kripya valid sentences enter karein!");
+return;
+}
+​const sceneDuration = parseInt(document.getElementById('speedSelect').value);
+const btn = document.getElementById('generateBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const statusText = document.getElementById('statusText');
+​btn.innerText = "Stop / Reset";
+btn.className = "flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm";
+downloadBtn.disabled = true;
+isPlaying = true;
+statusText.innerText = "Recording AI Video...";
+​// Initialize canvas stream recording
+const canvas = document.getElementById('renderCanvas');
+canvas.width = 800;
+canvas.height = 450;
+const ctx = canvas.getContext('2d');
+​let stream;
+try {
+stream = canvas.captureStream(30);
+mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+recordedChunks = [];
+​mediaRecorder.ondataavailable = function(e) {
+if (e.data && e.data.size > 0) {
+recordedChunks.push(e.data);
+}
+};
+​mediaRecorder.onstop = function() {
+try {
+let blob = new Blob(recordedChunks, { type: 'video/webm' });
+let url = URL.createObjectURL(blob);
+​downloadBtn.disabled = false;
+downloadBtn.className = "flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer";
+downloadBtn.onclick = function() {
+let a = document.createElement('a');
+a.href = url;
+a.download = 'ai-story-video.webm';
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+};
+} catch(err) {
+console.log("Blob error:", err);
+}
+};
+​mediaRecorder.start();
+} catch (err) {
+console.log("MediaRecorder init error:", err);
+}
+​let currentIndex = 0;
+const totalSteps = sentences.length;
+const progressBar = document.getElementById('progressBar');
+​function renderFrameAndProceed(imgElement, currentSentence) {
+if (!isPlaying) return;
+​try {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+​let gradient = ctx.createLinearGradient(0, 250, 0, 450);
+gradient.addColorStop(0, 'rgba(0,0,0,0)');
+gradient.addColorStop(1, 'rgba(0,0,0,0.85)');
+ctx.fillStyle = gradient;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+​ctx.fillStyle = "#ffffff";
+ctx.font = "bold 22px Inter, sans-serif";
+ctx.textAlign = "center";
+ctx.textBaseline = "bottom";
+ctx.fillText(currentSentence, canvas.width / 2, canvas.height - 30);
+} catch(e) {
+console.log("Canvas draw error:", e);
+}
+}
+​function playScene() {
+if (!isPlaying || currentIndex >= sentences.length) {
+stopVideo();
+return;
+}
+​let currentSentence = sentences[currentIndex] + ".";
+document.getElementById('sceneText').innerText = currentSentence;
+statusText.innerText = AI Scene ${currentIndex + 1}/${totalSteps};
+​// Strict AI Prompt construction to prevent mismatched images (like giraffe instead of elephant)
+let enhancedPrompt = High quality cinematic 3D digital illustration, photorealistic details, vivid colors: ${currentSentence};
+let encodedPrompt = encodeURIComponent(enhancedPrompt);
+let imgUrl = https://pollinations.ai/p/${encodedPrompt}?width=800&height=450&nologo=true&seed=${currentIndex + 505};
+​const imgElement = document.getElementById('sceneImage');
+let imageLoaded = false;
+​imgElement.onload = function() {
+if (!imageLoaded) {
+imageLoaded = true;
+renderFrameAndProceed(imgElement, currentSentence);
+}
+};
+​imgElement.onerror = function() {
+if (!imageLoaded) {
+imageLoaded = true;
+renderFrameAndProceed(imgElement, currentSentence);
+}
+};
+​imgElement.src = imgUrl;
+​// Fallback safety timer if AI takes time
+setTimeout(() => {
+if (!imageLoaded && isPlaying) {
+imageLoaded = true;
+renderFrameAndProceed(imgElement, currentSentence);
+}
+}, 2000);
+​if (synth) {
+synth.cancel();
+let utterance = new SpeechSynthesisUtterance(currentSentence);
+utterance.rate = 0.95;
+synth.speak(utterance);
+}
+​let progressPercent = ((currentIndex + 1) / totalSteps) * 100;
+progressBar.style.width = ${progressPercent}%;
+​currentIndex++;
+currentTimeout = setTimeout(playScene, sceneDuration);
+}
+​playScene();
+}
+​function stopVideo() {
+isPlaying = false;
+if (synth) synth.cancel();
+if (currentTimeout) clearTimeout(currentTimeout);
+​try {
+if (mediaRecorder && mediaRecorder.state !== "inactive") {
+mediaRecorder.stop();
+}
+} catch(e) {
+console.log("Recorder stop error:", e);
+}
+​const btn = document.getElementById('generateBtn');
+btn.innerText = "Play Video";
+btn.className = "flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm";
+​document.getElementById('sceneText').innerText = "Video Finished! Click 'Save Video' to Download.";
+document.getElementById('statusText').innerText = "Finished (AI Active)";
+document.getElementById('progressBar').style.width = "100%";
+}
+</script>
 </body>
 </html>
-```
