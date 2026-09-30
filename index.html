@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Context Text-to-Video Studio</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #22c55e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+
+        h2 {
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+            text-align: center;
+            color: var(--primary);
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 90px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: var(--text);
+            padding: 10px;
+            font-size: 0.95rem;
+            resize: none;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .controls-row select {
+            flex: 1;
+            background: #0f172a;
+            color: var(--text);
+            border: 1px solid #334155;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            flex: 1;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-download {
+            background: var(--accent);
+        }
+        .btn-download:hover {
+            background: #16a34a;
+        }
+
+        .btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* Video Simulation Viewport */
+        .video-viewport {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 10px;
+            margin-top: 15px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #334155;
+        }
+
+        .video-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.65;
+            transition: opacity 0.4s ease;
+        }
+
+        .video-text-overlay {
+            position: relative;
+            z-index: 2;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+            animation: fadeInOut 0.4s ease;
+        }
+
+        .watermark {
+            position: absolute;
+            bottom: 6px;
+            right: 10px;
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.7);
+            z-index: 3;
+            background: rgba(0,0,0,0.4);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background: #334155;
+            margin-top: 10px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.1s linear;
+        }
+
+        @keyframes fadeInOut {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🎬 Smart Context Video Studio</h2>
+        
+        <div class="input-group">
+            <label for="storyText">Apna Text/Script Yahan Daalein:</label>
+            <textarea id="storyText" placeholder="Example: I love traveling to mountains. Technology and coding are my passion. Eating delicious food makes me happy. Space science is amazing."></textarea>
+        </div>
+
+        <div class="controls-row">
+            <div>
+                <label for="speedSelect">Scene Speed:</label>
+                <select id="speedSelect">
+                    <option value="3000">3 Seconds</option>
+                    <option value="4000" selected>4 Seconds</option>
+                    <option value="5000">5 Seconds</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button id="generateBtn" class="btn" onclick="startVideoGeneration()">Play Video</button>
+            <button id="downloadBtn" class="btn btn-download" onclick="downloadVideoRecording()" disabled>Save Video</button>
+        </div>
+
+        <!-- Video Simulation Screen -->
+        <div class="video-viewport" id="videoViewport">
+            <canvas id="renderCanvas" style="display:none;"></canvas>
+            <img id="sceneImage" class="video-bg" src="https://picsum.photos/seed/start/800/450" alt="Scene Visual">
+            <div id="sceneText" class="video-text-overlay">Press Play Video to Start</div>
+            <div class="watermark">Studio App</div>
+        </div>
+
+        <div class="progress-bar-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+    </div>
+
+    <script>
+        let synth = window.speechSynthesis;
+        let isPlaying = false;
+        let currentTimeout = null;
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        // Smart Dictionary to map common text keywords to exact image topics
+        function extractKeyword(sentence) {
+            const text = sentence.toLowerCase();
+            
+            // Common keywords mapping
+            if (text.includes('mountain') || text.includes('hills') || text.includes('trek')) return 'mountains';
+            if (text.includes('beach') || text.includes('sea') || text.includes('ocean') || text.includes('water')) return 'beach,sunset';
+            if (text.includes('code') || text.includes('coding') || text.includes('programming') || text.includes('technology') || text.includes('tech')) return 'technology,coding';
+            if (text.includes('food') || text.includes('eating') || text.includes('hungry') || text.includes('delicious')) return 'food,restaurant';
+            if (text.includes('space') || text.includes('planet') || text.includes('galaxy') || text.includes('stars')) return 'space,galaxy';
+            if (text.includes('car') || text.includes('drive') || text.includes('vehicle') || text.includes('road')) return 'cars,highway';
+            if (text.includes('city') || text.includes('building') || text.includes('urban') || text.includes('street')) return 'city,architecture';
+            if (text.includes('animal') || text.includes('dog') || text.includes('cat') || text.includes('pet')) return 'animals,wildlife';
+            if (text.includes('money') || text.includes('business') || text.includes('rich') || text.includes('wealth')) return 'business,finance';
+            if (text.includes('music') || text.includes('song') || text.includes('guitar') || text.includes('audio')) return 'music,guitar';
+
+            // Fallback: Agar koi specific keyword na mile toh sentence ke pehle 2-3 unique words ko keyword bana lo
+            let words = text.replace(/[^a-zA-Z ]/g, "").split(" ").filter(w => w.length > 3);
+            return words.length > 0 ? words[0] : 'abstract';
+        }
+
+        function startVideoGeneration() {
+            if (isPlaying) {
+                stopVideo();
+                return;
+            }
+
+            const rawText = document.getElementById('storyText').value.trim();
+            if (!rawText) {
+                alert("Kripya kuch script text enter karein!");
+                return;
+            }
+
+            // Text ko sentences mein divide karna
+            let sentences = rawText.match(/[^.!?]+[.!?]*/g) || [rawText];
+            sentences = sentences.map(s => s.trim());
+
+            const sceneDuration = parseInt(getElementByIdVal('speedSelect'));
+            const btn = document.getElementById('generateBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            
+            btn.innerText = "Stop / Reset";
+            btn.style.background = "#ef4444";
+            downloadBtn.disabled = true;
+            isPlaying = true;
+
+            const canvas = document.getElementById('renderCanvas');
+            canvas.width = 800;
+            canvas.height = 450;
+            const ctx = canvas.getContext('2d');
+            
+            let stream = canvas.captureStream(30);
+            try {
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                recordedChunks = [];
+                mediaRecorder.ondataavailable = function(e) {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+                mediaRecorder.onstop = function() {
+                    let blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    let url = URL.createObjectURL(blob);
+                    downloadBtn.onclick = function() {
+                        let a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'smart-video.webm';
+                        a.click();
+                    };
+                    downloadBtn.disabled = false;
+                };
+                mediaRecorder.start();
+            } catch (err) {
+                console.log("Recording stream mode not supported.");
+            }
+
+            let currentIndex = 0;
+            const totalSteps = sentences.length;
+            const progressBar = document.getElementById('progressBar');
+
+            function playScene() {
+                if (!isPlaying || currentIndex >= sentences.length) {
+                    stopVideo();
+                    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                        mediaRecorder.stop();
+                    }
+                    return;
+                }
+
+                let currentSentence = sentences[currentIndex];
+                
+                // Update Text Overlay
+                document.getElementById('sceneText').innerText = currentSentence;
+                
+                // Get EXACT context keyword from sentence for precise picture matching
+                let exactKeyword = extractKeyword(currentSentence);
+                
+                // Use Source.unsplash or Picsum keyword search for context matching
+                const imgElement = document.getElementById('sceneImage');
+                imgElement.src = `https://picsum.photos/seed/${exactKeyword}/800/450`;
+
+                // Draw frame to hidden canvas
+                imgElement.onload = function() {
+                    ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "bold 26px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText(currentSentence, canvas.width / 2, canvas.height - 60);
+                };
+
+                // Speech Synthesis (Text Readout)
+                if (synth) {
+                    synth.cancel();
+                    let utterance = new SpeechSynthesisUtterance(currentSentence);
+                    utterance.rate = 1.0;
+                    synth.speak(utterance);
+                }
+
+                // Update Progress Bar
+                let progressPercent = ((currentIndex + 1) / totalSteps) * 100;
+                progressBar.style.width = `${progressPercent}%`;
+
+                currentIndex++;
+                currentTimeout = setTimeout(playScene, sceneDuration);
+            }
+
+            playScene();
+        }
+
+        function getElementIdVal(id) {
+            return document.getElementById(id).value;
+        }
+
+        function stopVideo() {
+            isPlaying = false;
+            if (synth) synth.cancel();
+            if (currentTimeout) clearTimeout(currentTimeout);
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+
+            const btn = document.getElementById('generateBtn');
+            btn.innerText = "Play Video";
+            btn.style.background = "var(--primary)";
+            
+            document.getElementById('sceneText').innerText = "Video Stopped / Finished";
+            document.getElementById('progressBar').style.width = "0%";
+        }
+    </script>
+</body>
+</html>
